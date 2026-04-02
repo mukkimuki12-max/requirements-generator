@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>要件定義プロンプトジェネレーター</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --surface2: #f0f1f5;
+      --border: #dde1ea;
+      --primary: #5b6ef5;
+      --primary-dark: #4a5ce4;
+      --primary-light: #eef0fe;
+      --text: #1a1d2e;
+      --text-sub: #6b7280;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo {
+      width: 36px; height: 36px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    header .logo svg { color: #fff; }
+    header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+    header p { font-size: 12px; color: var(--text-sub); margin-top: 1px; }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface2);
+    }
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .panel-title .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .panel-body {
+      padding: 18px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      display: block;
+      margin-bottom: 6px;
+    }
+    label .hint {
+      font-weight: 400;
+      color: var(--text-sub);
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color .15s, box-shadow .15s;
+      resize: vertical;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(91,110,245,.12);
+    }
+    textarea.main-input {
+      min-height: 260px;
+      line-height: 1.7;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .field-row { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text-sub);
+      transition: all .15s;
+      user-select: none;
+    }
+    .tag:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .tag.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    .btn-generate {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      width: 100%;
+      font-family: inherit;
+      letter-spacing: .01em;
+    }
+    .btn-generate:hover { background: var(--primary-dark); }
+    .btn-generate:active { transform: scale(.98); }
+    .btn-generate svg { flex-shrink: 0; }
+
+    .output-box {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .output-pre {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.75;
+      font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+      min-height: 340px;
+      max-height: 560px;
+    }
+    .output-pre.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-sub);
+      font-family: inherit;
+      font-size: 13px;
+      text-align: center;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .output-pre.empty svg { opacity: .35; }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .btn-copy, .btn-clear {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      border: 1.5px solid;
+    }
+    .btn-copy {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      flex: 1;
+    }
+    .btn-copy:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn-copy.copied { background: var(--success); border-color: var(--success); }
+    .btn-clear {
+      background: var(--surface);
+      color: var(--text-sub);
+      border-color: var(--border);
+    }
+    .btn-clear:hover { border-color: #ccc; color: var(--text); }
+
+    .char-count {
+      font-size: 11px;
+      color: var(--text-sub);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 4px 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+  </div>
+  <div>
+    <h1>要件定義プロンプトジェネレーター</h1>
+    <p>ヒアリング内容から claude.ai 用プロンプトを自動生成</p>
+  </div>
+</header>
+
+<main>
+  <!-- 左パネル: 入力 -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title"><span class="dot"></span>ヒアリング情報の入力</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="field">
+        <label>プロジェクト名 <span class="hint">（任意）</span></label>
+        <input type="text" id="projectName" placeholder="例: 在庫管理システム リニューアル">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>想定ユーザー <span class="hint">（任意）</span></label>
+          <input type="text" id="targetUser" placeholder="例: 社内営業担当者">
+        </div>
+        <div class="field">
+          <label>リリース目標 <span class="hint">（任意）</span></label>
+          <input type="text" id="deadline" placeholder="例: 2025年Q3">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>システムの種別</label>
+        <div class="tag-row" id="systemTypeTags">
+          <span class="tag" data-value="Webアプリ">🌐 Webアプリ</span>
+          <span class="tag" data-value="スマホアプリ">📱 スマホアプリ</span>
+          <span class="tag" data-value="社内システム">🏢 社内システム</span>
+          <span class="tag" data-value="API・バックエンド">⚙️ API / バックエンド</span>
+          <span class="tag" data-value="データ分析基盤">📊 データ分析基盤</span>
+          <span class="tag" data-value="その他">その他</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>重視する観点</label>
+        <div class="tag-row" id="focusTags">
+          <span class="tag" data-value="セキュリティ">🔒 セキュリティ</span>
+          <span class="tag" data-value="パフォーマンス">⚡ パフォーマンス</span>
+          <span class="tag" data-value="スケーラビリティ">📈 スケーラビリティ</span>
+          <span class="tag" data-value="UI/UX">🎨 UI/UX</span>
+          <span class="tag" data-value="コスト最適化">💰 コスト最適化</span>
+          <span class="tag" data-value="法令・コンプライアンス">📋 法令対応</span>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <div class="field" style="flex:1">
+        <label>
+          ヒアリング内容
+          <span class="hint">（議事録・メモ・会話ログなどをそのまま貼り付け可）</span>
+        </label>
+        <textarea
+          class="main-input"
+          id="hearingContent"
+          placeholder="例:
+・現状は Excel で在庫管理しているが、複数担当者が同時編集すると競合が起きる
+・商品マスタは約5,000件、月に300件程度の入出庫が発生する
+・スマホからも在庫確認できるようにしたい
+・アラート通知（在庫が閾値を下回ったらメール）が欲しい
+・権限は管理者・一般ユーザーの2種類
+・既存の基幹システム（SAP）とのデータ連携が必要かもしれないが未確定
+・予算感は500万円以内で検討中"
+          oninput="updateCharCount()"
+        ></textarea>
+        <div class="char-count" id="charCount">0 文字</div>
+      </div>
+
+      <button class="btn-generate" onclick="generatePrompt()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        プロンプトを生成する
+      </button>
+
+    </div>
+  </div>
+
+  <!-- 右パネル: 出力 -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title"><span class="dot" style="background:#10b981"></span>生成されたプロンプト</span>
+      <span class="badge" id="outputBadge" style="display:none">claude.ai にそのまま貼り付け可</span>
+    </div>
+    <div class="panel-body">
+      <div class="output-box">
+        <div class="output-pre empty" id="outputArea">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          左のフォームを入力して<br>「プロンプトを生成する」を押してください
+        </div>
+        <div class="actions" id="actions" style="display:none">
+          <button class="btn-copy" id="copyBtn" onclick="copyPrompt()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span id="copyBtnText">クリップボードにコピー</span>
+          </button>
+          <button class="btn-clear" onclick="clearOutput()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+            </svg>
+            クリア
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // タグの複数選択
+  function initTags(containerId) {
+    const container = document.getElementById(containerId);
+    container.querySelectorAll('.tag').forEach(tag => {
+      tag.addEventListener('click', () => tag.classList.toggle('active'));
+    });
+  }
+  initTags('systemTypeTags');
+  initTags('focusTags');
+
+  function getSelectedTags(containerId) {
+    return Array.from(
+      document.getElementById(containerId).querySelectorAll('.tag.active')
+    ).map(t => t.dataset.value);
+  }
+
+  function updateCharCount() {
+    const len = document.getElementById('hearingContent').value.length;
+    document.getElementById('charCount').textContent = len.toLocaleString() + ' 文字';
+  }
+
+  let generatedPrompt = '';
+
+  function generatePrompt() {
+    const projectName   = document.getElementById('projectName').value.trim();
+    const targetUser    = document.getElementById('targetUser').value.trim();
+    const deadline      = document.getElementById('deadline').value.trim();
+    const hearingContent = document.getElementById('hearingContent').value.trim();
+    const systemTypes   = getSelectedTags('systemTypeTags');
+    const focusPoints   = getSelectedTags('focusTags');
+
+    if (!hearingContent) {
+      alert('ヒアリング内容を入力してください。');
+      return;
+    }
+
+    // --- メタ情報ブロック ---
+    const metaLines = [];
+    if (projectName)           metaLines.push(`- プロジェクト名: ${projectName}`);
+    if (targetUser)            metaLines.push(`- 想定ユーザー: ${targetUser}`);
+    if (deadline)              metaLines.push(`- リリース目標: ${deadline}`);
+    if (systemTypes.length)    metaLines.push(`- システム種別: ${systemTypes.join('、')}`);
+    if (focusPoints.length)    metaLines.push(`- 重視する観点: ${focusPoints.join('、')}`);
+
+    const metaBlock = metaLines.length
+      ? `\n## プロジェクト基本情報\n${metaLines.join('\n')}\n`
+      : '';
+
+    // --- 非機能要件の観点ヒント ---
+    const nfHints = buildNFHints(focusPoints, systemTypes);
+
+    // --- プロンプト本体 ---
+    generatedPrompt = `あなたはシステム開発の上流工程に精通したITコンサルタントです。以下のヒアリング内容をもとに、新規開発プロジェクトの**要件定義書**をMarkdown形式で作成してください。
+
+---
+${metaBlock}
+## ヒアリング内容
+
+ヒアリング内容は箇条書き・議事録・会話ログなど形式は問いません。内容を読み解いて構造化してください。
+
+${hearingContent}
+
+---
+
+## 出力形式
+
+次の構成で、Markdown形式の要件定義書を出力してください。各セクションは見出し（##）で区切り、箇条書きや表を活用して読みやすく整理してください。
+
+### 1. 背景・目的
+- 現状の課題や背景を整理する
+- このシステムを開発する目的・ゴールを明確にする
+- ヒアリング内容から読み取れる「解決したい問題」を具体的に記述する
+
+### 2. 実現したいこと（システム概要）
+- システム全体で実現したいことをひと言で表す
+- 主要な利用シナリオ（ユーザーストーリー）を箇条書きで列挙する
+
+### 3. 機能要件
+- 実装が必要な機能を一覧化する
+- 優先度（高／中／低）を付与する
+- 機能ごとに「誰が・何を・どうする」を明確にする
+- 可能であれば機能をカテゴリ（例: 認証、マスタ管理、通知など）でグループ化する${nfHints ? '\n\n### 4. 非機能要件\n' + nfHints : '\n\n### 4. 非機能要件\n- パフォーマンス（応答速度、同時接続数など）\n- セキュリティ（認証、権限管理、データ保護など）\n- 可用性・信頼性（稼働率、障害対応など）\n- 保守性・拡張性\n- 法令・コンプライアンス要件\n- その他制約（予算、技術スタック、外部連携など）'}
+
+### 5. 未確認事項
+- ヒアリング内容から判断できない点・要確認の事項を列挙する
+- 各項目に「確認すべき理由」「確認しないと何が決められないか」を付記する
+- 推測で補った箇所も明記する
+
+---
+
+## 作成にあたっての注意事項
+
+1. ヒアリング内容に書かれていないことは**推測せず**「未確認事項」に記載してください
+2. 技術的な実装方法（使用フレームワーク等）ではなく「**何を実現したいか**」に焦点を当ててください
+3. 曖昧な表現（「使いやすい」「高速な」など）は具体的な指標に置き換えるか、未確認事項として記載してください
+4. 出力はそのままステークホルダーに共有できる品質を目指してください
+5. 「何を作るか」だけでなく「なぜそれが必要か」という目的の背景まで掘り下げてください`;
+
+    // 表示
+    const outputArea = document.getElementById('outputArea');
+    outputArea.className = 'output-pre';
+    outputArea.textContent = generatedPrompt;
+    document.getElementById('actions').style.display = 'flex';
+    document.getElementById('outputBadge').style.display = 'inline-flex';
+
+    // コピーボタンをリセット
+    const copyBtn = document.getElementById('copyBtn');
+    copyBtn.classList.remove('copied');
+    document.getElementById('copyBtnText').textContent = 'クリップボードにコピー';
+  }
+
+  function buildNFHints(focusPoints, systemTypes) {
+    const hints = [];
+
+    if (focusPoints.includes('セキュリティ') || systemTypes.includes('社内システム')) {
+      hints.push('- **セキュリティ**: 認証方式（SSO/MFAの要否）、権限管理の粒度、データ暗号化要件、監査ログの要否を明記すること');
+    }
+    if (focusPoints.includes('パフォーマンス')) {
+      hints.push('- **パフォーマンス**: 画面表示速度（目標秒数）、同時接続ユーザー数の上限、データ件数の規模感を定義すること');
+    }
+    if (focusPoints.includes('スケーラビリティ')) {
+      hints.push('- **スケーラビリティ**: 将来的なユーザー増加・データ増加への対応方針、水平スケーリングの要否を記載すること');
+    }
+    if (focusPoints.includes('UI/UX')) {
+      hints.push('- **UI/UX**: 対応デバイス・ブラウザ、アクセシビリティ基準（WCAG等）、多言語対応の要否を記載すること');
+    }
+    if (focusPoints.includes('コスト最適化')) {
+      hints.push('- **コスト**: 開発予算の上限、月次運用コストの目安、クラウド利用の可否を記載すること');
+    }
+    if (focusPoints.includes('法令・コンプライアンス')) {
+      hints.push('- **法令対応**: 個人情報保護法・GDPR等の適用範囲、業界固有の規制・認証要件を明記すること');
+    }
+    if (systemTypes.includes('スマホアプリ')) {
+      hints.push('- **モバイル**: iOS/Android対応バージョン、オフライン動作の要否、プッシュ通知の要否を記載すること');
+    }
+    if (systemTypes.includes('API・バックエンド')) {
+      hints.push('- **API**: SLA（稼働率目標）、レートリミット、バージョン管理方針を記載すること');
+    }
+
+    if (!hints.length) return null;
+    return hints.join('\n') + '\n- その他の非機能要件も漏れなく記載すること';
+  }
+
+  async function copyPrompt() {
+    if (!generatedPrompt) return;
+    try {
+      await navigator.clipboard.writeText(generatedPrompt);
+      const btn = document.getElementById('copyBtn');
+      btn.classList.add('copied');
+      document.getElementById('copyBtnText').textContent = 'コピーしました！';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        document.getElementById('copyBtnText').textContent = 'クリップボードにコピー';
+      }, 2500);
+    } catch {
+      // フォールバック
+      const ta = document.createElement('textarea');
+      ta.value = generatedPrompt;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      document.getElementById('copyBtnText').textContent = 'コピーしました！';
+      setTimeout(() => {
+        document.getElementById('copyBtnText').textContent = 'クリップボードにコピー';
+      }, 2500);
+    }
+  }
+
+  function clearOutput() {
+    generatedPrompt = '';
+    const outputArea = document.getElementById('outputArea');
+    outputArea.className = 'output-pre empty';
+    outputArea.innerHTML = `
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      左のフォームを入力して<br>「プロンプトを生成する」を押してください`;
+    document.getElementById('actions').style.display = 'none';
+    document.getElementById('outputBadge').style.display = 'none';
+  }
+</script>
+</body>
+</html>
